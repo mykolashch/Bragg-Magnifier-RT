@@ -42,30 +42,12 @@ def RockingCurve(central_angle,angular_range, step_size, Lattice_planes_miscut, 
         delta_oc=delta_os * (Bragg_angle - Lattice_planes_miscut) / (bragg_shift_oc + Bragg_angle - Lattice_planes_miscut)
 
         Deviation_parameter_complex=(Bragg_angle_deviation - bragg_shift_oc) / delta_oc
-        ##Deviation_parameter_complex=(Bragg_angle_deviation - bragg_shift_os) / delta_os
         
-        ############################Reflectivity[ii] =np.abs(Polarizability/Polarizability_minus)*np.abs(Deviation_parameter_complex-np.sign(Deviation_parameter_complex.real)*np.sqrt(Deviation_parameter_complex*Deviation_parameter_complex-1))**2
-        ###Reflectivity[ii]=-1*np.sqrt(Polarizability*Polarizability_minus/np.abs(assymetry_ratio))*(Deviation_parameter_complex-np.sign(Deviation_parameter_complex.real)*np.sqrt(Deviation_parameter_complex*Deviation_parameter_complex-1))/Polarizability_minus
         Reflectivity[ii]=np.abs(Polarizability/Polarizability_minus)*abs(Deviation_parameter_complex-np.sign(Deviation_parameter_complex.real)*np.sqrt(Deviation_parameter_complex*Deviation_parameter_complex-1))**2
         
         
         Angle_deviation[i] = Bragg_angle_deviation
         ii+=1
-        '''
-        bragg_shift_oc=( -gamma_o + np.sqrt(gamma_o ** 2 - (gamma_o- gamma_h) * np.sqrt(1 - gamma_o ** 2) * Polarizability_0/ np.sin(2 * Bragg_angle))) / np.sqrt(1 - gamma_o ** 2)
-        delta_os= R_e * (lam*1e6)**2 / (np.pi * (cell_dim**3) * np.sin(2 * Bragg_angle)) * np.sqrt(struct_factor ** 2) * np.sqrt(np.abs(gamma))
-        delta_oc=delta_os * (Bragg_angle - Lattice_planes_miscut) / (bragg_shift_oc + Bragg_angle - Lattice_planes_miscut)
-
-        #Deviation_parameter_complex=(Bragg_angle_deviation - bragg_shift_oc) / delta_oc
-        Deviation_parameter_complex=DD.calc_deviation_par_h(12.3984193E-10/lam,Lattice_planes_miscut,Bragg_angle_deviation)
-        
-        Polarizability=DD.calc_chih(12.3984193E-10/lam)
-        Polarizability_minus=DD.calc_chih(12.3984193E-10/lam)
-        Reflectivity[ii] =np.abs(Polarizability/Polarizability_minus)*np.abs(Deviation_parameter_complex-np.sign(Deviation_parameter_complex.real)*np.sqrt(Deviation_parameter_complex*Deviation_parameter_complex-1))**2
-        
-        Angle_deviation[i] = Bragg_angle_deviation
-        ii+=1
-        '''
         
     return Angle_deviation,  abs(Reflectivity), Bragg_angle, C_a
 
