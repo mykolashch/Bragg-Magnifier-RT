@@ -1,5 +1,5 @@
 # Bragg-Magnifier-RT
-
+<div style="text-align: right"> 
 This is a Ray Tracing Simulation for a system of optically polished monocrystals (possibly asymmetrically cut) erradiated by a narrow polychromatic X- ray beam of an extended  X-ray source. 
 A ray tracing cycle can be divided into two stages: a) setting the position of a central axis (CA) - single ray with wavelength Lambda_0 through which the spatial positions and orientations 
 of optical components are defined, and b) tracing of rays, where the light beam propagation through the system is simulated. 
