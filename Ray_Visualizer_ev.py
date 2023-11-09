@@ -35,150 +35,53 @@ class LightRay:
                 iter,
                 rand_seed=1):  # int, random seed for repeatability
 
-        #self.walker_pos=0
-        #if buffer>1:
-        #    self.buffer = int(buffer/2) #size of the matrix, which represents the light source
-        #else:
-        #    self.buffer = buffer
         self.buffer = buffer
-        #self.walker_pos=0
         print('buffer buffer: :: :::: ', buffer)
         self.small_buffer = small_buffer
-        #self.max_iter=max_iter #how many times this generator will return the sets of the light beams (max. iterations)
-        
-        self.lam = lam #the 'central' wavelength of the generated light
+        self.lam = lam 
 
-        ### here you reassign a variavle delta_lam, in general this is not a good thing to do because this 
-        # makes potential debugging much harder
-        # note, I changed the class initialization to avoid this
-        #self.delta_lam=lam*delta_lam #the width of the wavelength distribution of the generated light
         self.delta_lam = lam*lam_step #the width of the wavelength distribution of the generated light
         self.iter = iter
         self.rand_seed = rand_seed # some seed number - is then multiplied on iteration number and thereby changed
         self.hor_pos_=np.zeros(self.buffer)#*0
         self.vert_pos_=np.zeros(self.buffer)#*0
-        source_size2=0.1#0.15#0.04
+        source_size2=0.14#0.04
         self.source_size2=source_size2
         self.source_size1=source_size2
         
         if self.buffer>1 :
             source_vert_bins=10#[300, 10]
-            #0.63#0.21#0.33#1.25##best##0.66
-            #1.2
-            #source_size2=0.04#0.08#0.06#0.006#0.065#1.55#0.065#0.002#0.013#0.065##best##0.033
-            #0.12..
             source_size1=source_size2*(self.buffer/(source_vert_bins*source_vert_bins))#0.165#*5
-            #self.source_size2=source_size2
             self.source_size1=source_size1
             print('Source size:: ',source_size1)
             bb=np.linspace(-source_size2/2,source_size2/2,int(self.buffer/(source_vert_bins*source_size1/source_size2)))
             aa=np.linspace(-source_size1/2,source_size1/2,int(self.buffer/source_vert_bins))
-            
-            #print('buffer : ..:::: ', self.buffer)
+
             for i in range(0,int(source_vert_bins*source_size1/source_size2)):
                 self.hor_pos_[i*int(self.buffer/(source_vert_bins*source_size1/source_size2)):i*int(self.buffer/(source_vert_bins*source_size1/source_size2))+int(self.buffer/(source_vert_bins*source_size1/source_size2))]=bb
             jj=-1
             for i in range(0,self.buffer):
                 if(i%source_vert_bins==0):
                     jj+=1
-                self.vert_pos_[i]=aa[jj]-source_size1/6
-        #hor_pos_1=np.zeros(self.buffer)#*0
-        #vert_pos_1=np.zeros(self.buffer)#*0
-        
-        '''
-        if self.buffer>1 :
-            source_vert_bins=10#[200, 10]
-            #source_size1=0.2#0.63#0.21#0.33#1.25##best##0.66
-            #source_size2=0.1#0.065#0.002#0.013#0.065##best##0.033
-            source_size1=1.95#0.63#0.21#0.33#1.25##best##0.66
-            #1.8
-            source_size2=0.565#0.065#0.002#0.013#0.065##best##0.033
-            bb=np.linspace(-source_size2/2,source_size2/2,int(self.buffer/(source_vert_bins*source_size1/source_size2)))
-            aa=np.linspace(-source_size1/2,source_size1/2,int(self.buffer/source_vert_bins))
-            
-            #print('buffer : ..:::: ', self.buffer)
-            for i in range(0,int(source_vert_bins*source_size1/source_size2)):
-                vert_pos_1[i*int(self.buffer/(source_vert_bins*source_size1/source_size2)):i*int(self.buffer/(source_vert_bins*source_size1/source_size2))+int(self.buffer/(source_vert_bins*source_size1/source_size2))]=bb
-            jj=-1
-            for i in range(0,self.buffer):
-                if(i%source_vert_bins==0):
-                    jj+=1
-                hor_pos_1[i]=aa[jj]
-        #print('before',np.size(self.hor_pos_))
-        
-        self.hor_pos_=np.append(self.hor_pos_,hor_pos_1)
-        #print('afte',np.size(self.hor_pos_))
-        self.vert_pos_=np.append(self.vert_pos_,vert_pos_1)
-        self.buffer*=2
-        '''
+                self.vert_pos_[i]=aa[jj]
         
         
 
     def generate_beams(self):
 
         ##'Random' objects generation
-
-        ### I guess you wanted to seed the random number generators for 
-        # repeatability but it seems that this was done 
-        # incorrectly. Just to give you an example
-        #
-        # np.random.seed(2)
-        # rng2 = default_rng()
-        # print(rng2.uniform(0, 2*np.pi, 5))
-        # np.random.seed(2)
-        # rng2 = default_rng()
-        # print(rng2.uniform(0, 2*np.pi, 5))
-        # results in
-        # [5.71266729 4.09336347 1.23298466 1.0593865  4.27652501]
-        # [5.56092705 6.10918581 1.73520163 4.7623694  4.26986669]
-        #
-        # whereas 
-        #
-        # rng2 = default_rng(2)
-        # print(rng2.uniform(0, 2*np.pi, 5))
-        # rng2 = default_rng(2)
-        # print(rng2.uniform(0, 2*np.pi, 5))
-        # results in 
-        # [1.64375752 1.87547517 5.11593121 0.5775249  3.77054281]
-        # [1.64375752 1.87547517 5.11593121 0.5775249  3.77054281]
-        #
-        # secondly, rng3 was never used, I guess you planned to use it 
-        # for hor_angle, if so, please change below.
-        #
-
         # just for an example, I initialize 2 random number 
         # generators with individual seeds; 
         
         rng2 = default_rng(self.iter + self.rand_seed + 10)
         rng3 = default_rng(self.iter + self.rand_seed)
-        # now for every iteration I will use individual seed.
-        # Technically, you can also seed random number generator
-        # for every beam. Or you can come up with any other rule...
-
-        ### here I would suggest you to do int(round(...)) because 
-        #
-        # int(0.00000001/1e-5**2) results in 99
-        #
-        # and 
-        #
-        # int(0.00000001/1e-6**2) results in 10000
-        #
-        # due to numerical imprecision
-        # round would fix this behavior
         angles_number = np.int32(100)# np.int32(np.round(1e-8 / self.small_buffer**2))
-        #angles_number= np.ones(self.buffer)
-        print('Angles number:: ', angles_number)
-        ### just another small comment. you can use int or np.int32, 
-        # as well as round or np.round. Normally, we try to use np data types and 
-        # functions/ classes for consistency
 
+        print('Angles number:: ', angles_number)
 
         ### generate 1d arrays (angles_number * self.buffer) to exploit 
         # numpy vectorization
-        # I am not sure about lambdas, i.e. whether all rays are expected to
-        # have the same energy as it is implemented now or you plan to simulate
-        # rays with individual energies. If you need my help to modify the code 
-        # for the later case, just let me know.
+
         hor_angle = np.zeros(angles_number*self.buffer, dtype=np.float32) 
         roll_angle = np.zeros(angles_number*self.buffer, dtype=np.float32) 
 
@@ -190,18 +93,7 @@ class LightRay:
         init_coord = np.zeros((angles_number*self.buffer, 3), dtype=np.float32)
 
         for i in range(self.buffer):
-            '''
-            proportion=0.000687/0.00006175
-            unif_ = rng2.uniform(0.00006175, 0.000687, angles_number)
-            choose2 = rng2.choice([1, -1], angles_number)
-            choose3 = rng2.choice([1, -1], angles_number)
-            numb = (np.sqrt(((proportion*0.00006175/unif_)**2-1)/(proportion**2-1)))
-            numb*=choose2
-            roll_angle_cos[(i*angles_number):((i+1)*angles_number)] = choose3*np.sqrt(1-numb**2)
-            roll_angle_sin[(i*angles_number):((i+1)*angles_number)] = numb
-            hor_angle[(i*angles_number):((i+1)*angles_number)] = rng2.triangular(0, 0.00006175, 0.00006175, angles_number)##rng2.uniform(0, 0.00006175, angles_number)#
-            hor_angle[(i*angles_number):((i+1)*angles_number)] *= proportion/np.sqrt(roll_angle_cos[(i*angles_number):((i+1)*angles_number)]**2+(proportion*roll_angle_sin[(i*angles_number):((i+1)*angles_number)])**2)
-            '''
+
             h_p = self.hor_pos_[i] #horizontal position of the rays origin point
             v_p = self.vert_pos_[i] #vertical position of the rays origin point
             
@@ -210,33 +102,13 @@ class LightRay:
             roll_angle[(i*angles_number):((i+1)*angles_number)] = rng2.uniform(0, 2*np.pi, angles_number)#rng2.uniform(0, 0.000687, angles_number)#*self.max_iter)#rng2.uniform(-LightRay.source_divergence[1], LightRay.source_divergence[1], angles_number)#rng2.uniform(0, np.pi, angles_number)#(rng2.normal(0, np.pi, angles_number))
             #hor_angle[(i*angles_number):((i+1)*angles_number)] = rng2.triangular(0, 0.00006175, 0.00006175, angles_number)#rng2.uniform(0, 0.00006175, angles_number)
         
-            hor_angle[(i*angles_number):((i+1)*angles_number)] = rng2.triangular(0, 0.00006175, 0.00006175, angles_number)#(0, 0.00006175, 0.00006175, angles_number)##0, 0.000006175, 0.000006175#rng2.uniform(0, 0.00006175, angles_number)
-            #roll_angle[(i*angles_number):((i+1)*angles_number)] = rng2.uniform(0, 0.000687, angles_number)#*self.max_iter)#rng2.uniform(-LightRay.source_divergence[1], LightRay.source_divergence[1], angles_number)#rng2.uniform(0, np.pi, angles_number)#(rng2.normal(0, np.pi, angles_number))
-            #hor_angle[(i*angles_number):((i+1)*angles_number)] = rng2.uniform(0, 0.00006175, angles_number)
+            hor_angle[(i*angles_number):((i+1)*angles_number)] = rng2.triangular(0, 0.00006175, 0.00006175, angles_number)##0, 0.000006175, 0.000006175#rng2.uniform(0, 0.00006175, angles_number)
             
-            
-            ##print('what you call angle: :: ::  ', angle )
-            #angle = abs(np.sin(angle))#np.sqrt(angle*np.pi*np.pi-angle*np.pi*angle*np.pi)#(np.sin(angle*np.pi))
-            #angle = proportion*(angle)+1
-            #hor_angle[(i*angles_number):((i+1)*angles_number)] *= angle
-            '''
-            angle, base = np.modf(roll_angle[(i*angles_number):((i+1)*angles_number)]/(np.pi/2))
-            additional=((-1)**(base+1)).clip(min=0)
-            hor_angle[(i*angles_number):((i+1)*angles_number)] *= additional+angle*((-1)**base)#*self.max_iter)
-            #hor_angle[(i*angles_number):((i+1)*angles_number)] += 0.000006175
-            '''
-            
-            #lambdas[(i*angles_number):((i+1)*angles_number)] = np.ones(angles_number, dtype=np.float32) * self.lam #- self.delta_lam/1050 + (self.iter)*self.delta_lam/725 - (self.iter)*self.delta_lam/4200 
-            ####lambdas[(i*angles_number):((i+1)*angles_number)] = np.ones(angles_number, dtype=np.float32) * self.lam + (2*((i-self.buffer/2) >= 0) - 1)*0.000064*self.lam#+0.00002*self.lam
             lambdas[(i*angles_number):((i+1)*angles_number)] = np.ones(angles_number, dtype=np.float32) * self.lam - rng3.uniform(-1, 1, angles_number)*self.delta_lam 
 
             # here 0 coordinate is horizontal position of the rays origin point and 
             # 2 coordinate is vertical position of the rays origin point
-            #print('Hor position :: :: :::   ',self.hor_pos_[i])
-            
-            #h_p = np.ones(angles_number, dtype=np.float32)*0#self.hor_pos_[i] #horizontal position of the rays origin point
-            #v_p = np.ones(angles_number, dtype=np.float32)*0
-            #print('Hor position :: :: :::   ',h_p)
+           
             init_coord[(i*angles_number):((i+1)*angles_number), 1] = h_p
             init_coord[(i*angles_number):((i+1)*angles_number), 0] = v_p
 
@@ -520,14 +392,14 @@ class RayVisualizer:
     def Intensity_control(self): 
 
         ## Delete all the rays, that have become to weak after reflections..
-        self.lambdas = self.lambdas[self.amplitudes>0.1]
+        self.lambdas = self.lambdas[self.amplitudes>0.05]
 
         ### self.rays_pos_x, self.rays_pos_y, self.rays_pos_z are wrapped 
         # as self.rays_pos
-        self.rays_pos = self.rays_pos[self.amplitudes>0.1, :]
+        self.rays_pos = self.rays_pos[self.amplitudes>0.05, :]
         
-        self.rays_directions = self.rays_directions[self.amplitudes>0.1, :]
-        self.amplitudes = self.amplitudes[self.amplitudes>0.1]
+        self.rays_directions = self.rays_directions[self.amplitudes>0.05, :]
+        self.amplitudes = self.amplitudes[self.amplitudes>0.05]
     
     def Slits_cut(self, Slits, can, len_l):
         
@@ -569,35 +441,6 @@ class RayVisualizer:
         copy_pos = copy.deepcopy(rays_pos_y)
         rays_pos_x=rays_pos_x[copy_pos<Slits.vert_size2]
         rays_pos_y=rays_pos_y[copy_pos<Slits.vert_size2]
-        '''
-        [rays_pos_x, rays_pos_y, rays_pos_z] = np.transpose(self.rays_pos)
-        
-        self.lambdas = self.lambdas[rays_pos_x<Slits.hor_size2 ]
-        self.rays_directions = self.rays_directions[rays_pos_x<Slits.hor_size2,: ]
-        self.amplitudes = self.amplitudes[rays_pos_x<Slits.hor_size2 ]
-        self.rays_pos = self.rays_pos[rays_pos_x<Slits.hor_size2 ,:]
-
-        [rays_pos_x, rays_pos_y, rays_pos_z] = np.transpose(self.rays_pos)
-
-        self.lambdas = self.lambdas[rays_pos_x>-Slits.hor_size1 ]
-        self.rays_directions = self.rays_directions[rays_pos_x>-Slits.hor_size1,: ]
-        self.amplitudes = self.amplitudes[rays_pos_x>-Slits.hor_size1 ]
-        self.rays_pos = self.rays_pos[rays_pos_x>-Slits.hor_size1 ,:]
-
-        [rays_pos_x, rays_pos_y, rays_pos_z] = np.transpose(self.rays_pos)
-
-        self.lambdas = self.lambdas[rays_pos_y>-Slits.vert_size1 ]
-        self.rays_directions = self.rays_directions[rays_pos_y>-Slits.vert_size1,: ]
-        self.amplitudes = self.amplitudes[rays_pos_y>-Slits.vert_size1 ]
-        self.rays_pos = self.rays_pos[rays_pos_y>-Slits.vert_size1 ,:]
-
-        [rays_pos_x, rays_pos_y, rays_pos_z] = np.transpose(self.rays_pos)
-
-        self.lambdas = self.lambdas[rays_pos_y<Slits.vert_size2 ]
-        self.rays_directions = self.rays_directions[rays_pos_y<Slits.vert_size2,: ]
-        self.amplitudes = self.amplitudes[rays_pos_y<Slits.vert_size2 ]
-        self.rays_pos = self.rays_pos[rays_pos_y<Slits.vert_size2 ,:]
-        '''
 
     def rays_directions_change(self,crystal,object_normals, object_latice_normals):
 
@@ -611,35 +454,14 @@ class RayVisualizer:
             self.amplitudes *= Amplitude_ratio_
             
             out_angle_ray=-out_angle_ray+angle_out_main
-            #out_angle_ray=angle_out_main
-            
+
             self.rays_directions = RPL.get_refl_vector(self.rays_directions,np.array(object_normals), out_angle_ray)#out_angle_rays[ray])   
             self.rays_directions = self.rays_directions / np.linalg.norm(self.rays_directions)
         
-            '''       
-        
-            rays_incid_angle = RPL.get_angle_ray_plane( np.array(self.rays_directions), np.array(object_normals))
-            rays_crystal_plane_angle = RPL.get_angle_ray_plane( np.array(self.rays_directions[:]), np.array(object_latice_normals))
-            [Amplitude_ratio_, out_angle_ray, K_vector_range],angle_out_main, elem2 = crystal.crystal_reflection(rays_incid_angle, (-rays_incid_angle+rays_crystal_plane_angle), self.lambdas[:])##(crystal.Lattice_planes_miscut)
-            self.amplitudes[:]*=Amplitude_ratio_
-            
-            out_angle_ray=-out_angle_ray+angle_out_main
-            self.rays_directions = RPL.get_refl_vector(self.rays_directions,np.array(object_normals), out_angle_ray)#out_angle_rays[ray])    
-            self.rays_directions = self.rays_directions/np.linalg.norm(self.rays_directions)
-            '''
-            #print('Rays incid . angle: : : ', rays_incid_angle)
     ##########################
     #Olny this function ( propagation )- might be replaced by GPU code with similar performance - that would make the whole program faster..
     #########################
     def propagation(self, Geom, screen_length):
-        
-        ###Geom.object_normals[int(rocking_adjust[0])]
-        #self.lambdas = np.asarray(self.lambdas)
-        #self.adjust_surface_normals(rocking_adjust)
-
-        ### I would not recommend to replace this cycle becaue it is recursive, i.e. 
-        # each iteration affects the next one. While it can be still 'verctorized',
-        # readability will not be very good
 
         for itr in range(0,len(Geom.object_normals)):
 
@@ -650,16 +472,7 @@ class RayVisualizer:
             ###
             ##print( 'rays positions : . .:  ', np.transpose(self.rays_pos))
             [rays_pos_x, rays_pos_y, rays_pos_z] = np.transpose(self.rays_pos)
-            '''
-            for ray in range(np.shape(self.rays_directions)[0]):
-                rays_in_plane = RPL.get_project_ray_plane(np.array([rays_pos_x[ray], rays_pos_y[ray], rays_pos_z[ray]]),np.array(Geom.object_normals[itr]))
-                normilizer=[(np.linalg.norm(self.crystal_frame[0])**2), (np.linalg.norm(self.crystal_frame[1])**2)]
-                self.rays_plane_x[self.can-1][ray]=(np.dot(rays_in_plane,self.crystal_frame[0]))/normilizer[0]
-                self.rays_plane_y[self.can-1][ray]=(np.dot(rays_in_plane,self.crystal_frame[1]))/normilizer[1]
-                    
-                self.lambdas_plane[self.can-1][ray]= 12.3984193E-10 / self.lambdas[ray]
-                self.amplitudes_plane[self.can-1][ray]=self.amplitudes[ray]
-            '''
+
             rays_in_plane = RPL.get_project_ray_plane(self.rays_pos,np.array(Geom.object_normals[itr]))
             
             normilizer=[(np.linalg.norm(Geom.frame[0][itr])**2), (np.linalg.norm(Geom.frame[1][itr])**2)]
@@ -679,10 +492,6 @@ class RayVisualizer:
             self.Intensity_control()
 
             self.rays_traces_x.extend(self.rays_pos[:, 0])#[:] )
-            #print('self.rays_pos[:, 0]')
-            #print(self.rays_pos[:, 0].shape)
-            #print('self.rays_traces_x')
-            #print(len(self.rays_traces_x))
             self.rays_traces_y.extend(self.rays_pos[:, 1])#[:] )
             self.rays_traces_z.extend(self.rays_pos[:, 2])#[:] )
 
