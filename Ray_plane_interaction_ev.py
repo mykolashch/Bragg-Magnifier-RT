@@ -8,18 +8,9 @@ import matplotlib.colors as mcolors
 import matplotlib as mpl
 from mpl_toolkits import mplot3d
 
-
-### I had to rewrite the functions below to allow proper numpy vectorization. 
-# I arranged all arrays as [n x 3], where n is a number of rays we process simultaneously.
-# numpy allows to calculate dot product between [n x 3] and [3] arrays, therefore
-# we can do many calculations in 1-2 lines. Secondly, you will notice that I use [:, np.newaxis]
-# in some cases. This is explicit broadcasting in numpy. Just to give you an idea:
-# numpy doesn't allow an element-wise multiplication like this:
-# a[n] * b[m] = c[n x m]. You can overcome this by using np.tile and np.transpose as you did. 
+#Arranged all arrays as [n x 3], where n is a number of rays we process simultaneously.
 # A more 'pythonic' way would be   
 # a[:,np.newaxis] * b[m]
-# now a becomes [n x 1] and python authomatically broadcast a to become compaticle with b
-# https://numpy.org/doc/stable/user/basics.broadcasting.html
 
 def get_cartesian_direction_rectang(angle_vert, angle_rol):
     # from the ray direction values in spherical coordinates (two angles), this one returns a ray direction vecotr in cartesian coordinates
