@@ -133,8 +133,8 @@ class RayVisualizer:
         self.n_rays = init_coords.shape[0]
         self.can = 0
         
-        self.system_tilt_vert = False
-        self.system_tilt_hor = False
+        self.system_tilt_vert = 0
+        self.system_tilt_hor = 0
 
         ### self.sys_x, self.sys_y, self.sys_z is wrapped as self.sys
         self.sys = np.array([0, 0, 1], dtype=np.float32)
@@ -218,64 +218,91 @@ class RayVisualizer:
 
         pitch, roll, yaw = crystal_angles
 
-        self.N = np.matmul(RPL.rotate_around_axis(self.crystal_frame[0], roll), normal=self.N)##np.matmul(np.matmul(np.matmul(yaw_matr,pitch_matr),roll_matr), [self.sys_x, self.sys_y, self.sys_z])### this will be gone
+        self.N = np.matmul(RPL.rotate_around_axis(self.crystal_frame[0], roll), self.N)##np.matmul(np.matmul(np.matmul(yaw_matr,pitch_matr),roll_matr), [self.sys_x, self.sys_y, self.sys_z])### this will be gone
         self.N_a= np.matmul(RPL.rotate_around_axis(self.crystal_frame[0], roll), self.N_a)
-
+        '''
         self.N  = np.matmul(RPL.rotate_around_axis(self.crystal_frame[1], pitch), self.N)##np.matmul(np.matmul(np.matmul(yaw_matr,pitch_matr),roll_matr), [self.sys_x, self.sys_y, self.sys_z])### this will be gone
         self.N_a = np.matmul(RPL.rotate_around_axis(self.crystal_frame[1], pitch), self.N_a)
+        '''
+        self.N  = np.matmul(RPL.rotate_around_axis(self.crystal_frame[2], yaw), self.N)##np.matmul(np.matmul(np.matmul(yaw_matr,pitch_matr),roll_matr), [self.sys_x, self.sys_y, self.sys_z])### this will be gone
+        self.N_a = np.matmul(RPL.rotate_around_axis(self.crystal_frame[2], yaw), self.N_a)
 
 
-    def generate_surface_normals(self, crystal_angles, misscut, Vertical_or):
+    def generate_surface_normals(self, crystal_angles,crystal, misscut, Vertical_or,central_wavelength):
 
         pitch, roll, yaw = crystal_angles
-
+        #print(':::::PIITCH!:::',pitch)
         ### Note, I wrapped N_x, N_y, N_z and N_a_x, N_a_y, N_a_z as N and N_a, respectively
         
         if Vertical_or:
-            inline_vert_cryst = np.matmul(RPL.rotate_around_axis(self.moving_coord_sys[0], pitch), self.moving_coord_sys[2])
+            inline_vert_cryst = np.matmul(RPL.rotate_around_axis(self.moving_coord_sys[0], self.coef[0]*pitch), self.sys)
             
 
-            axis_vert_cryst = np.matmul(RPL.rotate_around_axis(self.moving_coord_sys[0], pitch+np.pi/2), self.moving_coord_sys[2])
-            axis_vert_cryst = np.matmul(RPL.rotate_around_axis(inline_vert_cryst, roll), axis_vert_cryst)
+            axis_vert_cryst = np.matmul(RPL.rotate_around_axis(self.moving_coord_sys[0], self.coef[0]*(pitch+np.pi/2)), self.sys)
+            #axis_vert_cryst = np.matmul(RPL.rotate_around_axis(inline_vert_cryst, roll), axis_vert_cryst)
 
-            axis_crystal_planes_vert_cryst = np.matmul(RPL.rotate_around_axis(self.moving_coord_sys[0], misscut+pitch+np.pi/2), self.moving_coord_sys[2])
-            axis_crystal_planes_vert_cryst = np.matmul(RPL.rotate_around_axis(inline_vert_cryst, roll), axis_crystal_planes_vert_cryst)
+            axis_crystal_planes_vert_cryst = np.matmul(RPL.rotate_around_axis(self.moving_coord_sys[0], self.coef[0]*(misscut+pitch+np.pi/2)), self.sys)
+            #axis_crystal_planes_vert_cryst = np.matmul(RPL.rotate_around_axis(inline_vert_cryst, roll), axis_crystal_planes_vert_cryst)
             
             #inline_vert_cryst = np.matmul(RPL.rotate_around_axis(self.moving_coord_sys[1], yaw), inline_vert_cryst) #???
-        
+            [Amplitude_ratio_, outcoming_angle, K_vector_range], angle_out_main, elem2 = crystal.crystal_reflection(pitch, misscut, central_wavelength)#self.lambdas[0]###self.lambdas[0]##(incid_angle-crystal_plane_angle)##(crystal.Lattice_planes_miscut)#(incid_angle-crystal_plane_angle), central_wavelength, central_wavelength)
+            new_sys_direction = RPL.get_refl_sys_axis(np.array(self.moving_coord_sys[2]), axis_vert_cryst,axis_crystal_planes_vert_cryst, angle_out_main, crystal,central_wavelength)
+
+            self.moving_coord_sys[2] = new_sys_direction/np.linalg.norm(new_sys_direction)
             
-            axis_crystal_planes_vert_cryst = np.matmul(RPL.rotate_around_axis(axis_vert_cryst, yaw), axis_crystal_planes_vert_cryst)
+            #axis_crystal_planes_vert_cryst = np.matmul(RPL.rotate_around_axis(axis_vert_cryst, yaw), axis_crystal_planes_vert_cryst)
+
+            new_moving_x_axis = np.cross(self.moving_coord_sys[2], self.sys)
+            self.moving_coord_sys[0] = new_moving_x_axis / np.linalg.norm(new_moving_x_axis)
+            new_moving_y_axis = np.cross(self.moving_coord_sys[2],self.moving_coord_sys[0])
+            self.moving_coord_sys[1] = new_moving_y_axis / np.linalg.norm(new_moving_y_axis)    
+
 
             self.crystal_inline = inline_vert_cryst / np.linalg.norm(inline_vert_cryst)
-            self.crystal_frame = [self.crystal_inline, self.moving_coord_sys[0]]
-            self.N = -axis_vert_cryst
-            self.N_a = -axis_crystal_planes_vert_cryst
+            self.crystal_frame = [self.crystal_inline, self.moving_coord_sys[0],axis_vert_cryst.copy()]
+            self.N = axis_vert_cryst#*-1
+            self.N_a = axis_crystal_planes_vert_cryst#*-1
 
-            self.coef[0] = (-1) ** int(self.system_tilt_vert)
-            self.system_tilt_vert = not self.system_tilt_vert
-                
+            self.sys=self.moving_coord_sys[2].copy()
+
+            self.coef[0] = 1#(-1) ** (int(self.system_tilt_vert))
+            self.system_tilt_vert += 1# not self.system_tilt_vert
+            self.adjust_surface_normals(crystal_angles)  
         else:
 
-            inline_hor_cryst = np.matmul(RPL.rotate_around_axis(self.moving_coord_sys[1], pitch), self.moving_coord_sys[2])
+            inline_hor_cryst = np.matmul(RPL.rotate_around_axis(self.moving_coord_sys[1], self.coef[1]*pitch), self.sys)
             #inline_hor_cryst = np.matmul(RPL.rotate_around_axis(self.moving_coord_sys[0], yaw), inline_hor_cryst) #???
 
-            axis_hor_cryst = np.matmul(RPL.rotate_around_axis(self.moving_coord_sys[1], pitch + np.pi / 2), self.moving_coord_sys[2])# instead - will be this!
-            axis_hor_cryst = np.matmul(RPL.rotate_around_axis(inline_hor_cryst, roll), axis_hor_cryst)
+            axis_hor_cryst = np.matmul(RPL.rotate_around_axis(self.moving_coord_sys[1], self.coef[1]*(pitch + np.pi / 2)), self.sys)# instead - will be this!
+            #axis_hor_cryst = np.matmul(RPL.rotate_around_axis(inline_hor_cryst, roll), axis_hor_cryst)
         
-            axis_crystal_planes_hor_cryst = np.matmul(RPL.rotate_around_axis(self.moving_coord_sys[1], misscut+pitch+np.pi/2),self.moving_coord_sys[2])
-            axis_crystal_planes_hor_cryst = np.matmul(RPL.rotate_around_axis(inline_hor_cryst, roll), axis_crystal_planes_hor_cryst)
+            axis_crystal_planes_hor_cryst = np.matmul(RPL.rotate_around_axis(self.moving_coord_sys[1], self.coef[1]*(misscut+pitch+np.pi/2)),self.sys)
+            #axis_crystal_planes_hor_cryst = np.matmul(RPL.rotate_around_axis(inline_hor_cryst, roll), axis_crystal_planes_hor_cryst)
 
-            axis_crystal_planes_hor_cryst = np.matmul(RPL.rotate_around_axis(axis_hor_cryst, yaw), axis_crystal_planes_hor_cryst)
+            #axis_crystal_planes_hor_cryst = np.matmul(RPL.rotate_around_axis(axis_hor_cryst, yaw), axis_crystal_planes_hor_cryst)
+
+            [Amplitude_ratio_, outcoming_angle, K_vector_range], angle_out_main, elem2 = crystal.crystal_reflection(pitch, misscut, central_wavelength)#self.lambdas[0]###self.lambdas[0]##(incid_angle-crystal_plane_angle)##(crystal.Lattice_planes_miscut)#(incid_angle-crystal_plane_angle), central_wavelength, central_wavelength)
+            new_sys_direction = RPL.get_refl_sys_axis(np.array(self.moving_coord_sys[2]), axis_hor_cryst,axis_crystal_planes_hor_cryst, angle_out_main, crystal,central_wavelength)
+            self.moving_coord_sys[2] = new_sys_direction/np.linalg.norm(new_sys_direction)
+            
+            #axis_crystal_planes_vert_cryst = np.matmul(RPL.rotate_around_axis(axis_vert_cryst, yaw), axis_crystal_planes_vert_cryst)
+
+            new_moving_x_axis = np.cross(self.moving_coord_sys[2], self.sys)
+            self.moving_coord_sys[1] = new_moving_x_axis / np.linalg.norm(new_moving_x_axis)
+            new_moving_y_axis = np.cross(self.moving_coord_sys[2],self.moving_coord_sys[0])
+            self.moving_coord_sys[0] = new_moving_y_axis / np.linalg.norm(new_moving_y_axis)    
 
             self.crystal_inline = inline_hor_cryst / np.linalg.norm(inline_hor_cryst)
-            self.crystal_frame = [self.crystal_inline, self.moving_coord_sys[1]]
-            self.N = -axis_hor_cryst#_inv
-            self.N_a = -axis_crystal_planes_hor_cryst
-            
-            self.coef[1] = (-1) ** int(self.system_tilt_hor)
-            self.system_tilt_hor = not self.system_tilt_hor    
-        
-        
+            self.crystal_frame = [self.crystal_inline, self.moving_coord_sys[1], axis_hor_cryst.copy()]
+            self.N = axis_hor_cryst#_inv
+            self.N_a = axis_crystal_planes_hor_cryst
+            self.sys=self.moving_coord_sys[2].copy()
+            self.coef[1] = 1#(-1) ** (int(self.system_tilt_hor)+1)
+            self.system_tilt_hor  += 1# not self.system_tilt_hor    
+            self.adjust_surface_normals(crystal_angles)
+        return angle_out_main
+
+
     def define_crystal_corners(self,moving_coord_sys_vector,size_of_cr_plane, cr_proportion):
 
         crystal_corner1 = size_of_cr_plane * moving_coord_sys_vector + size_of_cr_plane * cr_proportion * self.crystal_inline#+self.system_pos
@@ -290,7 +317,7 @@ class RayVisualizer:
         ### self.sys_x, self.sys_y, self.sys_z is wrapped as self.sys
         new_moving_x_axis = np.cross(new_sys_direction, self.sys)
         new_moving_x_axis = new_moving_x_axis / np.linalg.norm(new_moving_x_axis)
-        new_moving_y_axis = np.cross(new_moving_x_axis, new_sys_direction)
+        new_moving_y_axis = np.cross(new_sys_direction,new_moving_x_axis)
         new_moving_y_axis = new_moving_y_axis / np.linalg.norm(new_moving_y_axis)
         return new_moving_x_axis, new_moving_y_axis
 
@@ -298,20 +325,20 @@ class RayVisualizer:
 
         if Vertical_or: 
             crystal_corner1, crystal_corner2, crystal_corner3, crystal_corner4 = self.define_crystal_corners(self.moving_coord_sys[0], size_of_cr_plane, cr_proportion)
-            new_moving_x_axis, new_moving_y_axis = self.new_moving_axis(new_sys_direction)
-            self.moving_coord_sys = np.array([self.coef[0] * new_moving_x_axis, \
-                                            self.coef[0] * self.coef[1] * new_moving_y_axis, \
+            new_moving_y_axis, new_moving_x_axis = self.new_moving_axis(new_sys_direction)
+            self.moving_coord_sys = np.array([ new_moving_y_axis, \
+                                            new_moving_x_axis, \
                                             new_sys_direction], \
                                             dtype=np.float32)           
-
+            #self.coef[0]*
         else:
             crystal_corner1, crystal_corner2, crystal_corner3, crystal_corner4 = self.define_crystal_corners(self.moving_coord_sys[1], size_of_cr_plane, cr_proportion)
-            new_moving_y_axis, new_moving_x_axis = self.new_moving_axis(new_sys_direction)
-            self.moving_coord_sys = np.array([self.coef[0] * self.coef[1] * new_moving_x_axis, \
-                                            self.coef[1] * new_moving_y_axis, \
+            new_moving_x_axis, new_moving_y_axis = self.new_moving_axis(new_sys_direction)
+            self.moving_coord_sys = np.array([ self.coef[1]*new_moving_y_axis, \
+                                            new_moving_x_axis, \
                                             new_sys_direction], \
                                             dtype=np.float32)
-        
+            #self.coef[1]*
         self.cr_edge_x = [crystal_corner1[0], crystal_corner2[0], crystal_corner3[0], crystal_corner4[0]]
         self.cr_edge_y = [crystal_corner1[1], crystal_corner2[1], crystal_corner3[1], crystal_corner4[1]]#
         self.cr_edge_z = [crystal_corner1[2], crystal_corner2[2], crystal_corner3[2], crystal_corner4[2]]#
@@ -334,19 +361,19 @@ class RayVisualizer:
 
         #this function is only used during geometry generation
         #reflect - only turning (reflecting) the system axis
-        self.generate_surface_normals(crystal_angles, crystal.Lattice_planes_miscut, Vertical_or)
-        
+        out_angle=self.generate_surface_normals(crystal_angles,crystal, crystal.Lattice_planes_miscut, Vertical_or,central_wavelength)
+        '''
         incid_angle = RPL.get_angle_ray_plane( np.array(self.moving_coord_sys[2]), self.N)
         crystal_plane_angle = RPL.get_angle_ray_plane( np.array(self.moving_coord_sys[2]), self.N_a)
         
         [Amplitude_ratio_, outcoming_angle, K_vector_range], angle_out_main, elem2 = crystal.crystal_reflection(incid_angle, (-incid_angle+crystal_plane_angle), central_wavelength)#self.lambdas[0]###self.lambdas[0]##(incid_angle-crystal_plane_angle)##(crystal.Lattice_planes_miscut)#(incid_angle-crystal_plane_angle), central_wavelength, central_wavelength)
-        out_angle = angle_out_main - outcoming_angle
+        out_angle = angle_out_main# - outcoming_angle
         
         #new_sys_direction = RPL.get_refl_vector(np.array([self.sys_x, self.sys_y, self.sys_z]),np.array([N_x, N_y, N_z]), out_angle)
         new_sys_direction = RPL.get_refl_vector(np.array(self.moving_coord_sys[2]), self.N, out_angle)
         new_sys_direction = new_sys_direction/np.linalg.norm(new_sys_direction)
-        
-        self.make_plane_frame(syst_pos, Vertical_or, size_of_cr_plane, cr_proportion, new_sys_direction)
+        '''
+        #self.make_plane_frame(syst_pos, Vertical_or, size_of_cr_plane, cr_proportion, new_sys_direction)
         ### Note, I wrapped N_x, N_y, N_z and N_a_x, N_a_y, N_a_z as N and N_a, respectively
         return self.N.copy(), self.N_a.copy(), self.crystal_frame[0].copy(), self.crystal_frame[1].copy(),out_angle
 
@@ -445,18 +472,108 @@ class RayVisualizer:
     def rays_directions_change(self,crystal,object_normals, object_latice_normals):
 
         if isinstance(crystal, CrystalData):
-
+            
             rays_incid_angle = RPL.get_angle_ray_plane(self.rays_directions, np.array(object_normals))
             rays_crystal_plane_angle = RPL.get_angle_ray_plane(self.rays_directions, np.array(object_latice_normals))
+            
+            print('Rays before....:',  rays_incid_angle[3], ' with lattice:  ',rays_crystal_plane_angle[3])#, ' or ', -rays_incid_angle+rays_crystal_plane_angle)
+            
+            #print('your angles!   ::: ',rays_incid_angle)
+            [Amplitude_ratio_, out_angle_ray, H_vector_], angle_out_main, elem2 = crystal.crystal_reflection(rays_incid_angle, -(-rays_incid_angle+rays_crystal_plane_angle), self.lambdas)##(crystal.Lattice_planes_miscut)
+            
+            #'''
+            H_vector=2*np.pi*np.sqrt(crystal.lattice_indices[0]**2+crystal.lattice_indices[1]**2+crystal.lattice_indices[2]**2)/(crystal.unit_cell_dimension)
+           
+            
+            object_normals = object_normals / np.linalg.norm(object_normals)
+            object_latice_normals = object_latice_normals / np.linalg.norm(object_latice_normals)
+            #print('Rays!!! :  ',np.linalg.norm(self.rays_directions[2]))
+            #self.rays_directions = self.rays_directions / np.linalg.norm(self.rays_directions)
+            
+            
+            #a__= np.linalg.norm(object_normals)
+            #print('lattice vector length  :  ',np.linalg.norm(object_latice_normals))
+            object_latice_normals *= H_vector ##np.multiply(object_latice_normals,np.array((H_vector,H_vector,H_vector)))
+            #object_latice_normals = np.multiply(object_latice_normals,np.array((H_vector,H_vector,H_vector)))
+            ##print('Two Normals:  ',object_normals, ' and ', object_latice_normals)
+            proj_H = RPL.get_project_ray_plane(object_latice_normals, object_normals)
+            
+            #print('Nums:  ',a__,'  Nums: ',c__)
+            #cc__=0
+            #print('proj sign:::  ', RPL.get_project_ray_line(self.rays_directions[3], object_normals))
+            
+            self.rays_directions = self.rays_directions / np.linalg.norm(self.rays_directions, axis=-1)[:, np.newaxis]
+            self.rays_directions *= 2*np.pi/self.lambdas[:, np.newaxis]
+            Nabla_= (np.dot(np.transpose(object_normals[:, np.newaxis]), np.transpose((proj_H+self.rays_directions))))[0]**2 - np.linalg.norm((proj_H+self.rays_directions), axis=-1)**2 + (2*np.pi/self.lambdas)**2
+            #(np.dot(np.transpose(object_normals[:, np.newaxis]), np.transpose((proj_H-self.rays_directions))))**2#-np.linalg.norm((proj_H-self.rays_directions), axis=-1)[:, np.newaxis]**2#+(2*np.pi/self.lambdas[:, np.newaxis])**2
+            #print('My !!   ::  ',self.rays_directions-proj_H)  
+            
+            #print('My !!   ::  ',(np.dot(np.transpose(object_normals[:, np.newaxis]), np.transpose((proj_H-self.rays_directions))))[0]**2 - np.linalg.norm((proj_H-self.rays_directions), axis=-1)**2 + (2*np.pi/self.lambdas)**2)#,self.rays_directions,(proj_H-self.rays_directions))
+            print('Sign::: :::   ', np.dot(self.rays_directions, object_normals)[3] )
+            d__= np.sqrt(Nabla_) - np.dot(np.transpose(object_normals[:, np.newaxis]), np.transpose((proj_H+self.rays_directions)))[0] #(-b__+np.sqrt(b__**2-a__*c__))/a__
+            ##np.sign(RPL.get_project_ray_line(self.rays_directions, object_normals))*
+            print('N__ object normals::: :::   ', d__[3, np.newaxis] )#RPL.get_project_ray_line(object_latice_normals, object_normals)
+            self.rays_directions += proj_H + d__[:, np.newaxis] * object_normals
+            '''
+            for i in range(len(self.rays_directions)):
+                #self.rays_directions[i] = self.rays_directions[i] / np.linalg.norm(self.rays_directions[i])
+                #self.rays_directions[i] *= 2*np.pi/self.lambdas[i]#conter of the sphere
+                #b__= np.dot((proj_H+self.rays_directions[i]),object_normals)
+                #c__= (np.linalg.norm(proj_H + self.rays_directions[i])**2)-(2*np.pi/self.lambdas[i])**2
+                ##Nabla_= (np.dot(object_normals, (proj_H-self.rays_directions[i])))**2-np.linalg.norm((proj_H-self.rays_directions[i]))**2+(2*np.pi/self.lambdas[i])**2
+                #print('OH proj mod....:',  np.linalg.norm(proj_H), ' and :  ', np.linalg.norm(object_latice_normals), ' and normal mod :::  ', np.linalg.norm(object_normals))
+                #print('Nums:  ',b__)
+                #print('sign Nabla:::  ', np.sign(Nabla_))
+                #d__= -np.sign(RPL.get_project_ray_line(self.rays_directions[i], object_normals))*np.sqrt(Nabla_) - np.dot(object_normals, (proj_H+self.rays_directions[i])) #(-b__+np.sqrt(b__**2-a__*c__))/a__
+                #print('Nums d::::  ',d__)
+                #cc__=c__
+                
+                #if (np.linalg.norm(proj_H>0)):    
+                #    print('Proj H....:  ',proj_H, 'Proj on normal....:  ', RPL.get_project_ray_line(self.rays_directions[i],object_normals), 'H vector....:  ', H_vector, 'ray length....:  ',np.linalg.norm(self.rays_directions[i]), 'Nabla::: ',Nabla_)
+                
+                #RPL.get_project_ray_line(self.rays_directions[i],object_normals)
+                #print('Vector module::: ',np.linalg.norm((proj_H+self.rays_directions[i])),'constant multiplier::: ',2*np.pi/self.lambdas[i])
+                #print('Vector module::: ',np.linalg.norm((self.rays_directions[i])),'constant multiplier::: ',2*np.pi/self.lambdas[i])
+                
+                #self.rays_directions[i]=proj_H+object_normals*d__[i]+self.rays_directions[i]
+            '''
+            #print('Rays....:',  np.size(self.rays_directions[(self.amplitudes>0.5)]))
+            #print('Normals....:', np.array(object_normals))
+            
+            print('Rays after....:',  RPL.get_angle_ray_plane(self.rays_directions, np.array(object_normals))[3])
+            
+            #print('OH vectors....:',  c__, 'and', b__, ' and :  ', object_latice_normals, ' and normal:::  ', object_normals)
+            #RPL.get_angle_ray_plane(proj_H, object_normals)
+            #print('Nums:  ',b__)
+            #print('Nums:  ',a__,'  Nums: ',c__)
+            #proj_K = RPL.get_project_ray_plane(self.rays_directions, object_normals)
+            #line_origin=proj_H
+            #line_direction=object_normals
+            
+            
+            
+            #print('The lattice to surf.:  ',RPL.get_angle_ray_plane(object_latice_normals,object_normals))
+            #print('To surf.:  ',RPL.get_angle_ray_plane(proj_K,object_normals),' And  ',RPL.get_angle_ray_plane(self.rays_directions,object_normals))
+            
+            #proj_K_H = proj_H + proj_K
+            
+            #for i in range(len(self.rays_directions)):
+            #    self.rays_directions[i]=proj_K_H[i]+object_normals*np.sin(np.arccos(np.linalg.norm(proj_K_H[i])/(2*np.pi/self.lambdas[i])))*(2*np.pi/self.lambdas[i])
+                
+            
+            ##print('Hey!  ',proj_H, 'and', object_latice_normals)
+            #self.rays_directions=proj_K_H+np.sin(np.arccos(proj_KH_abs/(2*np.pi/self.lambdas)))*(2*np.pi/self.lambdas).dot(object_normals)
+            #'''
 
-            [Amplitude_ratio_, out_angle_ray, K_vector_range], angle_out_main, elem2 = crystal.crystal_reflection(rays_incid_angle, (-rays_incid_angle+rays_crystal_plane_angle), self.lambdas)##(crystal.Lattice_planes_miscut)
-
+            
             self.amplitudes *= Amplitude_ratio_
             
-            out_angle_ray=-out_angle_ray+angle_out_main
-
-            self.rays_directions = RPL.get_refl_vector(self.rays_directions,np.array(object_normals), out_angle_ray)#out_angle_rays[ray])   
-            self.rays_directions = self.rays_directions / np.linalg.norm(self.rays_directions)
+            print('Amplitudes..MAX ....:', np.max(Amplitude_ratio_))
+            
+            #out_angle_ray=-out_angle_ray+angle_out_main
+            
+            #self.rays_directions = RPL.get_refl_vector(self.rays_directions,np.array(object_normals), out_angle_ray)#out_angle_rays[ray])   
+            
         
     ##########################
     #Olny this function ( propagation )- might be replaced by GPU code with similar performance - that would make the whole program faster..
@@ -465,16 +582,17 @@ class RayVisualizer:
 
         for itr in range(0,len(Geom.object_normals)):
 
-
+            #print('Size RAYS POS',np.size(self.rays_pos))
             self.Intensity_control()
-
+            
             self.rays_pos = RPL.get_ray_plane_crossing(self.rays_pos, self.rays_directions, Geom.object_coords[itr+1], Geom.object_normals[itr])## np.array([0,0,20000]), np.array([0, 0, 1])
             ###
+            
             ##print( 'rays positions : . .:  ', np.transpose(self.rays_pos))
             [rays_pos_x, rays_pos_y, rays_pos_z] = np.transpose(self.rays_pos)
-
-            rays_in_plane = RPL.get_project_ray_plane(self.rays_pos,np.array(Geom.object_normals[itr]))
             
+            rays_in_plane = RPL.get_project_ray_plane(self.rays_pos,np.array(Geom.object_normals[itr]))
+            #print('Size RAYS IN PLANE',np.size(rays_in_plane))
             normilizer=[(np.linalg.norm(Geom.frame[0][itr])**2), (np.linalg.norm(Geom.frame[1][itr])**2)]
             #self.rays_plane_x[self.can][:len(self.lambdas)]=np.transpose(np.dot(rays_in_plane[:, np.newaxis],self.crystal_frame[0]))/normilizer[0]
             #self.rays_plane_y[self.can][:len(self.lambdas)]=np.transpose(np.dot(rays_in_plane[:, np.newaxis],self.crystal_frame[1]))/normilizer[1]
@@ -484,13 +602,14 @@ class RayVisualizer:
             self.lambdas_plane[self.can][:len(self.lambdas)]= 12.3984193E-10 / self.lambdas
             self.amplitudes_plane[self.can][:len(self.lambdas)]=self.amplitudes
             ###
+            
             if isinstance(Geom.cryst[itr], Slits):
                self.Slits_cut(Geom.cryst[itr], self.can, len(self.lambdas))
-
+            #print('Size RAYS POS 2 : ',np.size(self.rays_pos))
             self.rays_directions_change(Geom.cryst[itr], Geom.object_normals[itr], Geom.object_latice_normals[itr])
             
             self.Intensity_control()
-
+            
             self.rays_traces_x.extend(self.rays_pos[:, 0])#[:] )
             self.rays_traces_y.extend(self.rays_pos[:, 1])#[:] )
             self.rays_traces_z.extend(self.rays_pos[:, 2])#[:] )
@@ -499,5 +618,5 @@ class RayVisualizer:
             self.rays_traces_lam.extend(energies)
             
             self.crystal_sizes=[screen_length[0]/1, screen_length[1]/1]##screen_length##2/240
-
+            
             self.can+=1

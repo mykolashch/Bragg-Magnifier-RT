@@ -1,5 +1,5 @@
 {"energy": 29, "Miscut_220_small":0.01640609, "Miscut_220":0.1033235,
-"Miscut_111":0.11992157, "image_resolution":512, "repeat":60,
+"Miscut_111":0.11992157, "image_resolution":512, "repeat":300,
 "delta_lam":0.0005, "lambda_step_tot":1, "rocking_step_tot":6, "rocking_step":0.00000175,
 "rocking_init_pos":0,"mono_distance":9184,"multipoint":0,
 "rays_per_point":0.00001,"crystal_sizes":[30,10],"mono_distance":9184,"mono_slits":[0.12,0.63,0.095,1.19],

@@ -105,8 +105,8 @@ class CrystalData:
         #DD=CrystalData(self.Lattice_planes_miscut, crystal='Si', lattice_indices=lattice_indices)
         R_e=2.8179403262e-09
         cell_dim=0.000543095
-        if isinstance(lam, (list, tuple)):
-            lam=lam[0]
+        #if isinstance(lam, (list, tuple)):
+        #    lam=lam[0]
         Bragg_angle_darwin=np.arcsin(lam*1e6 / (2 * cell_dim / np.sqrt(self.lattice_indices[0] ** 2 + self.lattice_indices[1] ** 2 + self.lattice_indices[2] ** 2)))
            
         gamma_o = np.sin(Bragg_angle_darwin - planes_miscut)
@@ -115,7 +115,7 @@ class CrystalData:
         Max_Darvin_curve=(( -gamma_o + np.sqrt(gamma_o ** 2 - (gamma_o- gamma_h) * np.sqrt(1 - gamma_o ** 2) * self.get_chi_0(12.3984193E-10/lam)/ np.sin(2 * Bragg_angle_darwin))) / np.sqrt(1 - gamma_o ** 2)).real
         ####print(' Here I think I have maximum!  ',Max_Darvin_curve)
         
-        return Central_incid_angle+Max_Darvin_curve, (Bragg_angle, Max_Darvin_curve, Polarizability, Polarizability_minus, Beta, assymetry_ratio, Lattice_plane_trace_and_surface,(struct_factor*struct_factor_minus))#scatter_fac)
+        return Central_incid_angle+Max_Darvin_curve, (Bragg_angle, Max_Darvin_curve, Polarizability, Polarizability_minus, (2*np.pi*np.sqrt(self.lattice_indices[0]**2+self.lattice_indices[1]**2+self.lattice_indices[2]**2))/(self.unit_cell_dimension), assymetry_ratio, Lattice_plane_trace_and_surface,(struct_factor*struct_factor_minus))#scatter_fac)
 
     
     def crystal_reflection(self, incident_angle, Lattice_planes_miscut, lam):
@@ -123,16 +123,26 @@ class CrystalData:
         #miscut_sign=np.sign(Lattice_planes_miscut)
         
         #Lattice_planes_miscut=np.abs(Lattice_planes_miscut)
-
-        Central_incid_angle,(Bragg_angle, Max_Darvin_curve, Polarizability, Polarizability_minus, Beta, assymetry_ratio, Lattice_plane_trace_and_surface,struct_factor_sqear)=self.core_angle(lam,Lattice_planes_miscut)
+        
+        if isinstance(incident_angle, np.ndarray):
+            #print('INCID ANGLE was::: ',incident_angle)
+            #incident_angle[(incident_angle>np.pi/2)]-=np.pi/2
+            #incident_angle[(incident_angle<-np.pi/2)]+=np.pi/2
+            
+            #print('do it!  ',np.size(incident_angle[(incident_angle<0)]))#[(incident_angle<0)]
+            incident_angle[(incident_angle<0)]*=-1#+=np.pi/2#*=-1
+            #print('INCID ANGLE is now::: ',incident_angle)
+        
+        Central_incid_angle,(Bragg_angle, Max_Darvin_curve, Polarizability, Polarizability_minus, h_vector, assymetry_ratio, Lattice_plane_trace_and_surface,struct_factor_sqear)=self.core_angle(lam,Lattice_planes_miscut)
         Bragg_angle_deviation=-Bragg_angle+incident_angle+Lattice_planes_miscut
         incident_angle_deviation=incident_angle-Central_incid_angle#incident_angle+2*lattice_miscut_angle
-        
+        if isinstance(Central_incid_angle,np.ndarray):
+            print('   Central_incid_angle  ::  ',Central_incid_angle[3])
         
         R_e=2.8179403262e-09
         cell_dim=0.000543095
 
-        outcoming_angle=Central_incid_angle+2*Lattice_planes_miscut-(np.arccos(np.cos(Central_incid_angle+incident_angle_deviation)-np.cos(Central_incid_angle)+np.cos(Central_incid_angle+2*Lattice_planes_miscut)))
+        ###outcoming_angle=Central_incid_angle+2*Lattice_planes_miscut-(np.arccos(np.cos(Central_incid_angle+incident_angle_deviation)-np.cos(Central_incid_angle)+np.cos(Central_incid_angle+2*Lattice_planes_miscut)))
         
         gamma_o = np.sin(Bragg_angle - Lattice_planes_miscut)
         gamma_h = np.sin(- Bragg_angle - Lattice_planes_miscut)
@@ -142,9 +152,12 @@ class CrystalData:
         ##struct_factor=self.get_Fc(12.3984193E-10/lam)
         bragg_shift_oc=( -gamma_o + np.sqrt(gamma_o ** 2 - (gamma_o- gamma_h) * np.sqrt(1 - gamma_o ** 2) * self.get_chi_0(12.3984193E-10/lam)/ np.sin(2 * Bragg_angle))) / np.sqrt(1 - gamma_o ** 2)
         
+        bragg_shift_os= -1* (1-gamma)*self.get_chi_0(12.3984193E-10/lam)/ (2*np.sin( 2 * Bragg_angle))
+        
         delta_os= R_e * (lam*1e6)**2 / (np.pi * (cell_dim**3) * np.sin(2 * Bragg_angle)) * np.sqrt(struct_factor_sqear) * np.sqrt(np.abs(gamma))
-        delta_oc=delta_os * (Bragg_angle - Lattice_planes_miscut) / (bragg_shift_oc + Bragg_angle - Lattice_planes_miscut)
+        delta_oc = delta_os * (Bragg_angle - Lattice_planes_miscut) / (bragg_shift_oc + Bragg_angle - Lattice_planes_miscut)
 
+        #Deviation_parameter_complex=(Bragg_angle_deviation - bragg_shift_os) / delta_os   
         Deviation_parameter_complex=(Bragg_angle_deviation - bragg_shift_oc) / delta_oc   
             
         #############Amplitude_ratio_=-1*np.sqrt(Polarizability*Polarizability_minus/np.abs(assymetry_ratio))*(Deviation_parameter_complex-np.sign(Deviation_parameter_complex.real)*np.sqrt(Deviation_parameter_complex*Deviation_parameter_complex-1))/Polarizability_minus
@@ -154,7 +167,7 @@ class CrystalData:
         #Amplitude_ratio_[((np.cos(Central_incid_angle-incident_angle_deviation)-np.cos(Central_incid_angle)+np.cos(Central_incid_angle+2*Lattice_planes_miscut))<-1)]=0
         #if miscut_sign>0:
        
-        return [Amplitude_ratio_, outcoming_angle, 0], Central_incid_angle+2*self.Lattice_planes_miscut, 0 # np.mean(i_a)+2*l_p_m#np.mean(Central_incid_angle+2*Lattice_planes_miscut)
+        return [Amplitude_ratio_, 0, h_vector], Central_incid_angle+2*self.Lattice_planes_miscut, 0 # np.mean(i_a)+2*l_p_m#np.mean(Central_incid_angle+2*Lattice_planes_miscut)
         
         #return [Amplitude_ratio_, outcoming_angle, K_vector_range], Centr_angle+2*self.Lattice_planes_miscut, (-Bragg_angle_deviation+bragg_shift_oc+delta_oc+1j*(Bragg_angle_deviation-bragg_shift_oc+delta_oc)) # np.mean(i_a)+2*l_p_m#np.mean(Central_incid_angle+2*Lattice_planes_miscut)
         

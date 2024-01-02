@@ -1,0 +1,87 @@
+def rays_directions_change(self,crystal,object_normals, object_latice_normals):
+
+        if isinstance(crystal, CrystalData):
+            
+            rays_incid_angle = RPL.get_angle_ray_plane(self.rays_directions, np.array(object_normals))
+            rays_crystal_plane_angle = RPL.get_angle_ray_plane(self.rays_directions, np.array(object_latice_normals))
+            print('Rays before....:',  RPL.get_angle_ray_plane(self.rays_directions, np.array(object_normals)))#, ' or ', -rays_incid_angle+rays_crystal_plane_angle)
+            #print('your angles!   ::: ',rays_incid_angle)
+            [Amplitude_ratio_, out_angle_ray, H_vector_], angle_out_main, elem2 = crystal.crystal_reflection(rays_incid_angle, (-rays_incid_angle+rays_crystal_plane_angle), self.lambdas)##(crystal.Lattice_planes_miscut)
+            
+            #'''
+            H_vector=2*np.pi*np.sqrt(crystal.lattice_indices[0]**2+crystal.lattice_indices[1]**2+crystal.lattice_indices[2]**2)/(crystal.unit_cell_dimension)
+           
+            
+            object_normals = object_normals / np.linalg.norm(object_normals)
+            object_latice_normals = object_latice_normals / np.linalg.norm(object_latice_normals)
+            #print('Rays!!! :  ',np.linalg.norm(self.rays_directions[2]))
+            #self.rays_directions = self.rays_directions / np.linalg.norm(self.rays_directions)
+            
+            
+            a__= np.linalg.norm(object_normals)
+            #print('lattice vector length  :  ',np.linalg.norm(object_latice_normals))
+            object_latice_normals *= H_vector ##np.multiply(object_latice_normals,np.array((H_vector,H_vector,H_vector)))
+            #object_latice_normals = np.multiply(object_latice_normals,np.array((H_vector,H_vector,H_vector)))
+            print('Two Normals:  ',object_normals, ' and ', object_latice_normals)
+            proj_H = RPL.get_project_ray_plane(object_latice_normals, object_normals)
+            
+            #print('Nums:  ',a__,'  Nums: ',c__)
+            cc__=0
+            print('proj sign:::  ', RPL.get_project_ray_line(self.rays_directions[3], object_normals))
+            for i in range(len(self.rays_directions)):
+                self.rays_directions[i] = self.rays_directions[i] / np.linalg.norm(self.rays_directions[i])
+                self.rays_directions[i] *= 2*np.pi/self.lambdas[i]#conter of the sphere
+                #b__= np.dot((proj_H+self.rays_directions[i]),object_normals)
+                #c__= (np.linalg.norm(proj_H + self.rays_directions[i])**2)-(2*np.pi/self.lambdas[i])**2
+                Nabla_= (np.dot(object_normals, (proj_H-self.rays_directions[i])))**2-np.linalg.norm((proj_H-self.rays_directions[i]))**2+(2*np.pi/self.lambdas[i])**2
+                #print('OH proj mod....:',  np.linalg.norm(proj_H), ' and :  ', np.linalg.norm(object_latice_normals), ' and normal mod :::  ', np.linalg.norm(object_normals))
+                #print('Nums:  ',b__)
+                #print('sign Nabla:::  ', np.sign(Nabla_))
+                d__= -np.sign(RPL.get_project_ray_line(self.rays_directions[i], object_normals))*np.sqrt(Nabla_) - np.dot(object_normals, (proj_H+self.rays_directions[i])) #(-b__+np.sqrt(b__**2-a__*c__))/a__
+                #print('Nums d::::  ',d__)
+                #cc__=c__
+                '''
+                if (np.linalg.norm(proj_H>0)):    
+                    print('Proj H....:  ',proj_H, 'Proj on normal....:  ', RPL.get_project_ray_line(self.rays_directions[i],object_normals), 'H vector....:  ', H_vector, 'ray length....:  ',np.linalg.norm(self.rays_directions[i]), 'Nabla::: ',Nabla_)
+                '''
+                #RPL.get_project_ray_line(self.rays_directions[i],object_normals)
+                #print('Vector module::: ',np.linalg.norm((proj_H+self.rays_directions[i])),'constant multiplier::: ',2*np.pi/self.lambdas[i])
+                #print('Vector module::: ',np.linalg.norm((self.rays_directions[i])),'constant multiplier::: ',2*np.pi/self.lambdas[i])
+                
+                self.rays_directions[i]=proj_H+object_normals*d__+self.rays_directions[i]
+
+            #print('Rays....:',  np.size(self.rays_directions[(self.amplitudes>0.5)]))
+            print('Normals....:', np.array(object_normals))
+            
+            print('Rays after....:',  RPL.get_angle_ray_plane(self.rays_directions, np.array(object_normals)))
+            
+            #print('OH vectors....:',  c__, 'and', b__, ' and :  ', object_latice_normals, ' and normal:::  ', object_normals)
+            #RPL.get_angle_ray_plane(proj_H, object_normals)
+            #print('Nums:  ',b__)
+            #print('Nums:  ',a__,'  Nums: ',c__)
+            #proj_K = RPL.get_project_ray_plane(self.rays_directions, object_normals)
+            #line_origin=proj_H
+            #line_direction=object_normals
+            
+            
+            
+            #print('The lattice to surf.:  ',RPL.get_angle_ray_plane(object_latice_normals,object_normals))
+            #print('To surf.:  ',RPL.get_angle_ray_plane(proj_K,object_normals),' And  ',RPL.get_angle_ray_plane(self.rays_directions,object_normals))
+            
+            #proj_K_H = proj_H + proj_K
+            
+            #for i in range(len(self.rays_directions)):
+            #    self.rays_directions[i]=proj_K_H[i]+object_normals*np.sin(np.arccos(np.linalg.norm(proj_K_H[i])/(2*np.pi/self.lambdas[i])))*(2*np.pi/self.lambdas[i])
+                
+            
+            print('Hey!  ',proj_H, 'and', object_latice_normals)
+            #self.rays_directions=proj_K_H+np.sin(np.arccos(proj_KH_abs/(2*np.pi/self.lambdas)))*(2*np.pi/self.lambdas).dot(object_normals)
+            #'''
+
+            
+            self.amplitudes *= Amplitude_ratio_
+            print('Amplitudes..MAX ....:', np.max(Amplitude_ratio_))
+            #out_angle_ray=-out_angle_ray+angle_out_main
+            
+            #self.rays_directions = RPL.get_refl_vector(self.rays_directions,np.array(object_normals), out_angle_ray)#out_angle_rays[ray])   
+            

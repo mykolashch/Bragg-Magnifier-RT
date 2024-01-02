@@ -8,15 +8,14 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import matplotlib as mpl
 import time
-import copy
 import json
 import os
 import datetime
 import copy
-import scipy
+from scipy import stats
 
 from matplotlib.colorbar import Colorbar
-from tif_image_analysis import open_tif_image, open_exper_data,show_image_contours
+from tif_image_analysis import open_tif_image,show_image_contours
 from matplotlib.colors import LogNorm
 from mpl_toolkits import mplot3d
 from math import isnan, floor
@@ -24,7 +23,7 @@ from Rocking_Curve import RockingCurve
 
 # internal imports
 from Crystals import CrystalData, Slits
-from Open_trajectories import show_trajectories, show_contours
+#from Open_trajectories import show_trajectories, show_contours
 #from Lab_system_ev import Propagation as Propagation_ev
 from Ray_Visualizer_ev import LightRay as LightRay_ev
 # fitting the gaussian
@@ -34,7 +33,7 @@ model = modeling.models.Gaussian1D()#+modeling.models.Gaussian1D()#modeling.mode
 
 #%%
 # parse files with set-up configuration
-os.chdir('C:\\Users\\gx4419\\Documents\\Python_Scripts\\backup\\try_to_finalize_Aug2023')##os.chdir('C:\\Users\\gx4419\\Documents\\Python_Scripts\\Evelinas_histograms_created')
+os.chdir('C:\\Users\\gx4419\\Documents\\Python_Scripts\\backup\\FromGH')##os.chdir('C:\\Users\\gx4419\\Documents\\Python_Scripts\\Evelinas_histograms_created')
 
 with open('Parameters_KARA.txt') as f:#('/ccpi/data/RayTracing_BraggMagnifier/Parameters_KARA.txt') 
     data_with_params = f.read()
@@ -46,7 +45,7 @@ js = json.loads(data_with_params)
 print(js)
 
 geom_chromatic = 7
-geometries_section=0#3# which optical elements will be in the graphic window? (0 - beginning of the system)
+geometries_section=3#3# which optical elements will be in the graphic window? (0 - beginning of the system)
 
 Graphics = js["Graphics"]#True
 Beam_path = js["Beam_path"]#True
@@ -60,11 +59,18 @@ lam = 12.3984193E-10 / energy #in Angström
 k = np.pi*2/lam
 
 #Slits of the beamline
-Primary_sl=Slits([0.52,0.73,0.3,1.43])#Primary_sl= Slits([0.3,0.3,0.3,0.3])#Primary_sl=Slits([0.0,0.13,1000000,1000000])#Primary_sl= ([100000,100000,1000000,1000000])#
+Primary_sl=Slits([100000,100000,1000000,1000000])#Slits([0.52,0.73,0.3,1.43])#Primary_sl= Slits([0.3,0.3,0.3,0.3])#Primary_sl=Slits([0.0,0.13,1000000,1000000])#Primary_sl= ([100000,100000,1000000,1000000])#
 
-object_sl= Slits([100000,100000,1000000,1000000])
+object_sl= Slits([1000000,1000000,10000000,10000000])
 
-detector_sl= Slits([-150.5,178.5,150,-122])#Slits([-399,427,150,-122]) #{hor,hor,vert,vert}
+#############detector_sl= Slits([-150.5,178.5,150,-122])#Slits([-399,427,150,-122]) #{hor,hor,vert,vert}
+####detector_sl= Slits([380,-352,380,-352])
+#detector_sl= Slits([376,-348,380,-352])
+#detector_sl= Slits([133,-105,128,-100])
+#detector_sl= Slits([228,0,228,0])#Slits([128,-100,128,-100])
+#detector_sl= Slits([123,-95,145,-117])# for roll mistune 0.005
+#detector_sl= Slits([128,-100,138,-110])## for roll mistune 0.008
+detector_sl= Slits([128,-100,137,-109])## for vert cr mistune 0.0001##vert,hor(left->right)
 # Crystal Lattices
 Lattice1=[1,1,1]
 Lattice2=[2,2,0]
@@ -161,7 +167,7 @@ c_tot = []#[[],[]]
 
 all_crystals = [Primary_sl, Si_111, Si_111, object_sl, Si_220_miscut,Si_220_small_miscut, Si_220_miscut,Si_220_small_miscut,detector_sl,0,0]#Primary_sl,##good one
 ## list of the positions of the crystal that is being detuned: starting from the position of the best alignment
-rocking_positions_mono2 = np.array([rocking_current_2,rocking_current_2-2*rocking_step,rocking_current_2-1*rocking_step,rocking_current_2+1*rocking_step, rocking_current_2+2*rocking_step, rocking_current_2+3*rocking_step])#np.linspace(rocking_current_2, rocking_current_2+rocking_step_tot*rocking_step, rocking_step_tot)
+rocking_positions_mono2 = np.array([rocking_current_2,rocking_current_2-3*rocking_step,rocking_current_2-2*rocking_step,rocking_current_2-1*rocking_step, rocking_current_2+1*rocking_step, rocking_current_2+2*rocking_step])#np.linspace(rocking_current_2, rocking_current_2+rocking_step_tot*rocking_step, rocking_step_tot)
 #rocking_positions_bm1 = np.array([0,-2*rocking_step,-1*rocking_step,1*rocking_step, 2*rocking_step, 3*rocking_step])#np.linspace(rocking_current_2, rocking_current_2+rocking_step_tot*rocking_step, rocking_step_tot)
 
 
@@ -174,7 +180,7 @@ plane_image_steps_tot=[[] for i in range(len(all_crystals))]#
 distances = np.array([13816, 9184,185,1000,300,600,300,600,295,2,1], dtype=np.float32)#13816
 cross_distances = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=np.float32)#
 shift_to_add= 0#0.00000175
-
+print('Initially the angle is this::  ', Angle_for_220_small_misscut)
 
 #init crystal normals with theit angles to the Central Axis in this order : pitch, roll yaw.
 crystals_normals=[0,]*rocking_step_tot
@@ -186,17 +192,24 @@ for pos in range(rocking_step_tot):
                         [rocking_positions_mono2[pos],0,0], \
                         #[rocking_positions_mono2[pos],0,0]
                         None,\
-                        [Angle_for_220,-0.005,0], \
+                        [Angle_for_220-0.00001,0,0], \
+                        #-0.0001
+                        #-0.00001
+                        #-0.00003
                         #-0.005,0], \
                         #0.02??#-0.01#0.004
                         #[Angle_for_minus220,0,0], \
                         [Angle_for_220_small_misscut,0,0], \
+                        #+0.000063#+0.01-0.00056#+0.01-0.000558
                         #None,\
-                        [Angle_for_220+2*0.00000175,0.005,0], \
+                        [Angle_for_220,0.005,0], \
+                        #-0.00003
+                        #+2*0.00000175,0.005
                         #0.01
                         #[Angle_for_220+2*rocking_step,0.005,0], \
                         #[rocking_positions_bmcr1[pos],0,0], \
                         [Angle_for_220_small_misscut,0,0], \
+                        #+0.000063#+0.01-0.000564
                         None, None ]###None,#rocking_positions[pos]##[rocking_current_2,rocking_positions[pos],0]
 
 #%%
@@ -290,13 +303,14 @@ for cycle in range(rocking_step_tot):
         ampl = [[] for i in range(geometry_el_num)]
         for geom_id in range(len(all_crystals)):
             ### try to get rid of 'Propagation' file####
-            plane_image_x[geom_id].extend(RaySet.rays_plane_x[geom_id][(0.5<RaySet.amplitudes_plane[geom_id][:])])
-            plane_image_y[geom_id].extend(RaySet.rays_plane_y[geom_id][(0.5<RaySet.amplitudes_plane[geom_id][:])])
-            plane_image_lam[geom_id].extend(RaySet.lambdas_plane[geom_id][(0.5<RaySet.amplitudes_plane[geom_id][:])])
-            ampl[geom_id].extend(RaySet.amplitudes_plane[geom_id][(0.5<RaySet.amplitudes_plane[geom_id][:])])
+            #print('AAAAAAAAAAAAAAAAAAAAAAAA!!!')
+            plane_image_x[geom_id].extend(RaySet.rays_plane_x[geom_id][(0.05<RaySet.amplitudes_plane[geom_id][:])])
+            plane_image_y[geom_id].extend(RaySet.rays_plane_y[geom_id][(0.05<RaySet.amplitudes_plane[geom_id][:])])
+            plane_image_lam[geom_id].extend(RaySet.lambdas_plane[geom_id][(0.05<RaySet.amplitudes_plane[geom_id][:])])
+            ampl[geom_id].extend(RaySet.amplitudes_plane[geom_id][(0.05<RaySet.amplitudes_plane[geom_id][:])])
             #print('Geom id ',geom_id, 'length of array  ',len(plane_image_y[geom_id]))
             ####
-
+        
         print(len(plane_image_y))
         for geom_id in range(len(all_crystals)):
             # edges depend on geometry only
@@ -364,14 +378,14 @@ for cycle in range(rocking_step_tot):
             
             if geom_id == geom_chromatic:
                 if iter == 0:
-                    previous_min = scipy.stats.binned_statistic_2d(plane_image_y[geom_id], plane_image_x[geom_id], plane_image_lam[geom_id], statistic='min', bins=[y_edge[geom_id], x_edge[geom_id]])
-                    previous_max = scipy.stats.binned_statistic_2d(plane_image_y[geom_id], plane_image_x[geom_id], plane_image_lam[geom_id], statistic='max', bins=[y_edge[geom_id], x_edge[geom_id]])
+                    previous_min = stats.binned_statistic_2d(plane_image_y[geom_id], plane_image_x[geom_id], plane_image_lam[geom_id], statistic='min', bins=[y_edge[geom_id], x_edge[geom_id]])
+                    previous_max = stats.binned_statistic_2d(plane_image_y[geom_id], plane_image_x[geom_id], plane_image_lam[geom_id], statistic='max', bins=[y_edge[geom_id], x_edge[geom_id]])
                     previous_max = previous_max[0]
                     previous_min = previous_min[0]
                     previous_min[np.isnan(previous_min)] = 0
                     previous_max[np.isnan(previous_max)] = 0
-                current_min = scipy.stats.binned_statistic_2d(plane_image_y[geom_id], plane_image_x[geom_id], plane_image_lam[geom_id], statistic='min', bins=[y_edge[geom_id], x_edge[geom_id]])
-                current_max = scipy.stats.binned_statistic_2d(plane_image_y[geom_id], plane_image_x[geom_id], plane_image_lam[geom_id], statistic='max', bins=[y_edge[geom_id], x_edge[geom_id]])
+                current_min = stats.binned_statistic_2d(plane_image_y[geom_id], plane_image_x[geom_id], plane_image_lam[geom_id], statistic='min', bins=[y_edge[geom_id], x_edge[geom_id]])
+                current_max = stats.binned_statistic_2d(plane_image_y[geom_id], plane_image_x[geom_id], plane_image_lam[geom_id], statistic='max', bins=[y_edge[geom_id], x_edge[geom_id]])
                 current_min = current_min[0]
                 current_max = current_max[0]
                 current_min[np.isnan(current_min)] = 0
@@ -381,7 +395,6 @@ for cycle in range(rocking_step_tot):
                 cond = np.logical_and(current_min > 1, previous_min > 1)
                 previous_min[cond] = np.minimum(previous_min[cond], current_min[cond])
                 previous_max = np.maximum(previous_max, current_max)
-    
     if cycle == 0: 
         x_edge_translated = [[] for i in range(len(all_crystals))]
         y_edge_translated = [[] for i in range(len(all_crystals))]

@@ -59,7 +59,7 @@ def show_image_contours(imarray_,imarray2_, rocking_angle, first_or_second_half,
             print(np.shape(mask))
             if swap_anything:
                 imarray2=np.rot90(np.fliplr(imarray2))
-                blurred=np.fliplr(blurred)
+                blurred=np.flipud(blurred)
                 blurred2=np.rot90(np.fliplr(blurred2))
             axs[j_num].imshow(imarray2,vmin=np.min(imarray2),vmax=np.max(imarray2), interpolation='none',cmap='binary', aspect='auto')#vmin=np.min(imarray),vmax=np.max(imarray)##cmap='jet'
             
